@@ -1,0 +1,84 @@
+#!/bin/bash
+
+
+source ev
+
+while true; do
+
+        read -p "Please select question (all or 1-10 or q to quit): " question
+        echo ""
+        case $question in
+                1)
+                        check_pw
+                        ;;
+                2)
+                        check_interface
+			check_ip
+                        ;;
+                3)
+                        check_repos
+                        ;;
+                4)
+                        check_chrony
+                        ;;
+                5)
+                        validate_autofs
+                        ;;
+                6)
+                        check_grp
+                        check_users
+                        check_grp_membership
+                        check_usr_shell
+                        chk_sudo
+                     
+                        ;;
+                7)
+                        chk_max_days
+                        
+                        ;;
+                8)
+                        chk_enforce_pw
+			chk_acc_exp
+                        ;;
+                9)
+                        check_umask
+                        
+                        ;;
+                10)
+
+
+                        check_special_perm
+			check_special_perm2
+                        ;;
+
+                all)
+                        check_interface
+                        check_ip
+                        check_pw
+                        check_repos
+                        check_chrony
+                        validate_autofs
+                        check_grp
+                        check_users
+                        check_grp_membership
+                        check_usr_shell
+                        chk_sudo
+                        chk_max_days
+                        chk_enforce_pw
+                        chk_acc_exp
+                        check_umask
+                        check_special_perm
+                        check_special_perm2
+                        ;;
+                q)
+                        break
+                        ;;
+
+
+            *)
+                    echo "You Did not Select valid Question number"
+        esac
+done
+
+#AUTHOR: ZEESHAN ALI (MOON)
+

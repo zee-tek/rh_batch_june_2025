@@ -1,0 +1,355 @@
+#!/bin/bash
+
+echo -e "\n\e[36mLINOOP TEK RHCSA EVALUATION TOOL STARTING\nKEEP CALM AND SIT TIGHT\e[0m"
+echo -e "\n\e[37m***********************RUNNING NOW******************************\n\e[0m"
+
+: ' This Script evaluate students tasks
+   - Check static       --DONE
+   - Check repos        --DONE
+   - Create autofs      --DONE
+   - check root pw      --DONE
+   - check chrony       --DONE
+   - check group        --DONE
+   - check Users        --DONE
+  '
+
+
+if [ `id -u` != 0 ];then
+        echo ""
+        echo -e "\e[31mFailed: Please Run this Script as root\e[0m\n"
+        exit 1
+fi
+######################################################################################
+dnf install sshpass -q -y &>/dev/null
+pkg_ecode=$?
+
+check_pw() {
+   echo "Checking Root PW"..........
+   sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+   sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+   systemctl restart sshd &>/dev/null
+   if [ $pkg_ecode -eq 0 ];then
+      sshpass -p 'redhat' ssh -o StrictHostKeyChecking=no root@localhost 'pwd>/dev/null' &>/dev/null
+      if [ $? -eq 0 ];then
+        echo -e "\e[32mRoot_PW_Check: Pass\e[0m\n"
+      else
+        echo -e "\e[31mRoot_PW_Check: Fail\e[0m\n"
+      fi
+   else
+     echo -e '"\e[31msshpass" package not installed, Please install it first\e[0m\n'
+     echo -e "\e[31mexit 1\e[0m\n"
+   fi
+}
+
+#######################################################################################
+check_interface() {
+    if ip link show "$1" > /dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+check_ip() {
+    while true; do
+        read -p "Please enter your network card name (e.g., enp0s3, ens): " n_card
+        if check_interface "$n_card"; then
+            break
+        else
+            echo -e "\e[31mNetwork interface '$n_card' is not correct. Please re-enter.\e[0m\n"
+        fi
+    done
+
+    ip_method=$(nmcli con show "$n_card" | grep ipv4.method | awk '{print $2}')
+
+    if [ "$ip_method" == "manual" ]; then
+        echo -e "\e[32mIP_Check: PASS\e[0m\n"
+    else
+        echo -e "\e[31mIP_Check: FAIL\e[0m\n"
+    fi
+}
+##########################################################################################
+dnf repolist --enabled -q|egrep -v '^rhel|^repo'|grep -i app&>/dev/null
+app_chk=$?
+dnf repolist --enabled -q|egrep -v '^rhel|^repo'|grep -i base&>/dev/null
+base_chk=$?
+check_repos(){
+   echo "Checking Repositories"..........
+
+   if [ $app_chk -eq 0 ];then
+
+     echo -e "\e[32mAPPSTRAM_Check: Pass\e[0m\n"
+
+   else
+
+     echo -e "\e[31mAPPSTREAM_Check: Fail\e[0m\n"
+
+   fi
+
+   if [ $base_chk -eq 0 ];then
+
+     echo -e "\e[32mBASEOS_Check: Pass\e[0m\n"
+
+   else
+
+     echo -e "\e[31mBASEOS_Check: Fail\e[0m\n"
+
+   fi
+
+}
+##########################################################################################
+#sed -i "/^pool.*/s/^/# /" /etc/chrony.conf &>/dev/null
+
+chronyc sources -v | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' >/dev/null
+chrony_ip_chk=$?
+
+chronyc sources -v | grep -q 'nfs-ntp-server'
+chrony_host_chk=$?
+
+check_chrony() {
+  echo "Check Chrony...................."
+  systemctl restart chronyd &>/dev/null
+
+  if [ $chrony_ip_chk -eq 0 ] || [ $chrony_host_chk -eq 0 ]; then
+    echo -e "\e[32mChrony_Check: Pass\e[0m\n"
+  else
+    echo -e "\e[31mChrony_Check: Fail\e[0m\n"
+  fi
+}
+
+########################################################################################
+user_name="user1"
+validate_autofs() {
+
+        rm -rf /remo/$user_name/uniq1 &>/dev/null
+        su - $user_name -c "touch /remo/$user_name/uniq1" &>/dev/null
+        file_st=$?
+        df -h|grep $user_name &>/dev/null
+        mn_st=$?
+
+        if [ $file_st -eq 0 ]&&[ $mn_st -eq 0 ];then
+                echo -e "\e[32mAutoFS_Check: Pass\e[0m\n"
+        else
+                echo -e "\e[31mAutoFS_Check: Fail\e[0m\n"
+        fi
+}
+################################################################################
+grp="admins"
+check_grp(){
+      echo "Check Group Exists"..................
+      if [ `getent group admins` ];then
+        echo -e "\e[32mGroup: Pass\e[0m\n"
+      else
+        echo -e "\e[31mGroup: Fail\e[0m\n"
+      fi
+}
+
+check_users(){
+    echo "Check Users Accounts"................
+    users=("anna" "farry" "sal")
+
+    all_users_exist=true
+
+    for user in "${users[@]}"; do
+      if ! id "$user" &>/dev/null; then
+        #echo "User $user does not exist."
+        all_users_exist=false
+      fi
+    done
+
+    if [ "$all_users_exist" = true ]; then
+        echo -e "\e[32mUSERS: Pass\e[0m\n"
+    else
+        echo -e "\e[31mUSERS: Fail\e[0m\n"
+    fi
+}
+
+
+check_grp_membership(){
+    echo "Check Group MemberShip"...................
+    grp="admins"
+    users=("anna" "farry")
+
+    grp_members=true
+
+    for user in "${users[@]}"; do
+      if ! id -nG "$user" | grep -qw "$grp" &>/dev/null; then
+        grp_members=false
+      fi
+    done
+
+    if [ "$grp_members" = true ]; then
+        echo -e "\e[32mGroup_membership: Pass\e[0m\n"
+    else
+        echo -e "\e[31mGroup_membership: Fail\e[0m\n"
+    fi
+}
+
+
+
+check_usr_shell(){
+    echo "Check sal shell"................
+    lg_shell=`grep sal /etc/passwd|awk -F : '{ print $7 }'|awk -F / '{ print $NF }'`
+    des_shell="nologin"
+    if [ $lg_shell == $des_shell ];then
+        echo -e "\e[32msal_shell: PASS\e[0m\n"
+    else
+        echo -e "\e[31msal_shell: Fail\e[0m\n"
+    fi
+}
+
+chk_sudo(){
+    echo "Check SUDO"...................
+    grep "^%admins" /etc/sudoers &>/dev/null
+    sudo_st=$?
+    grep "^%admins" /etc/sudoers|grep "NOPASSWD" &>/dev/null
+    sudo_st1=$?
+
+    if [ $sudo_st -eq 0 ] && [ $sudo_st1 -eq 0 ];then
+        echo -e "\e[32mSudo_Group: Pass\e[0m\n"
+    else
+        echo -e "\e[31mSudo_Group: Fail\e[0m\n"
+    fi
+}
+
+
+check_umask(){
+   echo "Check UMASK".................
+   des_umask="0002"
+   current_umask=`su - natasha -c 'umask'`
+
+   if [ $des_umask == $current_umask ];then
+           echo -e "\e[32mUMASK: Pass\e[0m\n"
+   else
+           echo -e "\e[31mUMASK: Fail\e[0m\n"
+   fi
+}
+
+check_special_perm(){
+   echo "Check SetGuid"...................
+   dir="/tmp/admins"
+
+    if [ -d "$dir" ]; then
+    perm=$(stat -c "%A" "$dir")
+    if [[ $perm == *"s"* ]]; then
+        echo -e "\e[32mCollebration_DIR: Pass\e[0m\n"
+    else
+        echo -e "\e[31mCollebration_DIR: Fail\e[0m\n"
+    fi
+else
+    echo -e "\e[31madmins_dir_exists: Fail\e[0m\n"
+fi
+
+}
+
+check_special_perm2(){
+   echo "Check StickyBit".....................
+   dir="/tmp/admins"
+
+    if [ -d "$dir" ]; then
+    perm=$(stat -c "%A" "$dir")
+    #if [[ $perm == *"t"* ]] || [[ $perm == *"T"* ]]; then
+     if [[ $perm == *"t"* ]] || [[ $perm == *"T"* ]];then
+        echo -e "\e[32mstick_bit: Pass\e[0m\n"
+    else
+        echo -e "\e[31msticky_bit: Fail\e[0m\n"
+    fi
+else
+    echo -e "\e[31madmins_dir_exists: Fail\e[0m\n"
+fi
+
+}
+
+chk_max_days(){
+   echo "Check Max Days"...............
+   max_d=`grep '^PASS_MAX_DAYS' /etc/login.defs|awk '{print $2}'`
+
+   if [ $max_d == "90" ];then
+        echo -e "\e[32mmax_days: Pass\e[0m\n"
+   else
+        echo -e "\e[31mmax_days: Fail\e[0m\n"
+   fi
+}
+
+
+chk_enforce_pw(){
+    echo "Check password change enforce"............
+    user_n="harry"
+    chage -l "$user_n" |head -n1|grep -w 'password must be changed'&>/dev/null
+    st=$?
+    if [ $st -eq 0 ]; then
+        echo -e "\e[32menforce_pw_change: Pass\e[0m\n"
+    else
+        echo -e "\e[31menforce_pw_change: Fail\e[0m\n"
+    fi
+}
+
+chk_acc_exp(){
+   echo "Check account expiration"...............
+   des_exp_d=60
+   chg_d=`chage -l "harry" | grep "Account expires" | awk -F ':' '{print $NF}'|sed 's/^ *//;s/ *$//'`
+   chage -l "harry" | grep "Account expires"|grep -q never
+   chg_never=$?
+ if [ $chg_never -ne 0 ];then
+
+   if [ `date -d +${des_exp_d}days +%Y-%m-%d` == `date -d "$chg_d" +"%Y-%m-%d"` ];then
+           echo -e "\e[32macc_exp: Pass\e[0m\n"
+   else
+           echo -e "\e[31macc_exp: Fail\e[0m\n"
+   fi
+
+ else
+
+           echo -e "\e[31macc_exp_set: Fail\e[0m\n"
+ fi
+
+}
+
+check_umask(){
+   echo "Check UMASK".................
+   des_umask="0002"
+   current_umask=`su - natasha -c 'umask'`
+
+   if [ $des_umask == $current_umask ];then
+           echo -e "\e[32mUMASK: Pass\e[0m\n"
+   else
+           echo -e "\e[31mUMASK: Fail\e[0m\n"
+   fi
+}
+
+check_special_perm(){
+   echo "Check SetGuid"...................
+   dir="/tmp/admins"
+
+    if [ -d "$dir" ]; then
+    perm=$(stat -c "%A" "$dir")
+    if [[ $perm == *"s"* ]]; then
+        echo -e "\e[32mCollebration_DIR: Pass\e[0m\n"
+    else
+        echo -e "\e[31mCollebration_DIR: Fail\e[0m\n"
+    fi
+else
+    echo -e "\e[31madmins_dir_exists: Fail\e[0m\n"
+fi
+
+}
+
+check_special_perm2(){
+   echo "Check StickyBit".....................
+   dir="/tmp/admins"
+
+    if [ -d "$dir" ]; then
+    perm=$(stat -c "%A" "$dir")
+    #if [[ $perm == *"t"* ]] || [[ $perm == *"T"* ]]; then
+     if [[ $perm == *"t"* ]] || [[ $perm == *"T"* ]];then
+        echo -e "\e[32mstick_bit: Pass\e[0m\n"
+    else
+        echo -e "\e[31msticky_bit: Fail\e[0m\n"
+    fi
+else
+    echo -e "\e[31madmins_dir_exists: Fail\e[0m\n"
+fi
+
+}
+################################################################################
+

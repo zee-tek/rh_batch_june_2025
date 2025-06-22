@@ -1,0 +1,62 @@
+#!/bin/bash
+
+if [ `id -u` != 0 ];then
+        echo ""
+        echo -e "\e[31m Failed: Please Run this Script as root\e[0m\n"
+        exit 1
+fi
+
+pre-eval_task1(){
+   echo "RUNNING TASK 1 ......................"
+   userdel -r natasha &>/dev/null
+   userdel -r harry &>/dev/null
+   userdel -r anna &>/dev/null
+   userdel -r farry &>/dev/null
+   userdel -r sal &>/dev/null
+   groupdel admins &>/dev/null
+   sed -i '/^%admins/d' /etc/sudoers &>/dev/null
+   useradd harry
+   useradd natasha
+   sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 99999/' /etc/login.defs &>/dev/null
+}
+
+pre-eval_task2(){
+   echo "RUNNING TASK 2 ......................"
+   for i in user{1..5};do userdel -r $i &>/dev/null;done
+declare -A users
+users=( ["user1"]=4001 ["user2"]=4002 ["user3"]=4003 )
+mkdir /remo &>/dev/null
+
+for user in "${!users[@]}"; do
+    uid=${users[$user]}
+    sudo useradd -u $uid -M -b /remo $user &>/dev/null
+done
+dnf remove autofs -y -q >/dev/null
+
+}
+
+pre-eval_task3(){
+   echo "RUNNING TASK 3 ......................"
+   repo_dir=/etc/yum.repos.d/
+   find "$repo_dir" -type f -name "*.repo" -not -name "redhat.repo" -exec rm -f {} \; &>/dev/null}
+}
+
+pre-eval_task4(){
+   echo "RUNNING TASK 4 ......................"
+   file=/etc/chrony.conf
+   sed -i '/^server/d' "$file"
+   systemctl restart chronyd
+}
+
+pre-eval_task5(){
+   echo "RUNNING TASK 5 ......................"
+      rm -rf  /tmp/admins &>/dev/null
+}
+
+
+pre-eval_task6(){
+   echo "RUNNING TASK 6 ......................"
+      echo `openssl rand -base64 14`|passwd --stdin root &>/dev/null
+         shutdown -r now
+}
+

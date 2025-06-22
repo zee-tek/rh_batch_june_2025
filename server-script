@@ -1,0 +1,37 @@
+#!/bin/bash
+
+
+if [ `id -u` != 0 ];then
+        echo ""
+        echo -e "\e[31m Failed: Please Run this Script as root\e[0m\n"
+        exit 1
+fi
+
+echo -e "#Deleting and Recreating user accounts.....\n"
+for i in user{1..5};do userdel -r $i &>/dev/null;done
+declare -A users
+users=( ["user1"]=4001 ["user2"]=4002 ["user3"]=4003 )
+
+for user in "${!users[@]}"; do
+    uid=${users[$user]}
+    sudo useradd -u $uid -m -b /remo $user >/dev/null
+    if [ $? -eq 0 ]; then
+        echo "User $user with UID $uid created successfully."
+    else
+        echo "Failed to create user $user with UID $uid."
+    fi
+done
+echo -e "\n#exporting user's home directory.....\n"
+echo -e "===========================================\n"
+exp_file="/etc/exports"
+add_line="/remo *(rw,sync,no_root_squash)"
+
+if ! grep -Fxq "$add_line" "$exp_file"; then
+    echo "$add_line" | sudo tee -a "$exp_file" > /dev/null
+    exportfs -avr
+fi
+
+systemctl restart nfs-server
+systemctl enable nfs-server
+firewall-cmd --add-service={nfs,rpc-bind,mountd} --permanent &>/dev/null
+firewall-cmd --reload &>/dev/null
