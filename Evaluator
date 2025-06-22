@@ -50,6 +50,9 @@ while true; do
                         check_special_perm
 			check_special_perm2
                         ;;
+		11)
+			check_selinux
+			;;
 
                 all)
                         check_interface
@@ -69,6 +72,7 @@ while true; do
                         check_umask
                         check_special_perm
                         check_special_perm2
+			check_selinux
                         ;;
                 q)
                         break

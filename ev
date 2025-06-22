@@ -352,4 +352,21 @@ fi
 
 }
 ################################################################################
+check_selinux(){
+   echo "check website is accessible"..........
+   selinux_chk=`curl localhost:83 2>/dev/null`
+   firewall-cmd --list-ports |grep '83' &>/dev/null
+   selinux_port=$?
+   if [ "$selinux_chk" == "Practicing RHCSA9" ];then
+         echo -e "\e[32mSelinux_Web_Running: Pass \e[0m\n"
+   else
+         echo -e "\e[31mSelinux_Web_Running: Fail \e[0m\n"
+   fi
 
+   if [ $selinux_port -eq 0 ];then
+         echo -e "\e[32mSelinux_Web_Firewall_Port: Pass \e[0m\n"
+   else
+         echo -e "\e[31mSelinux_Web_Firewall_Port: Fail \e[0m\n"
+   fi
+}
+################################################################################
