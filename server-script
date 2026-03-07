@@ -10,7 +10,7 @@ fi
 ####################################################################################
 
 # NFS Server Setup
-
+echo
 echo -e "#Deleting and Recreating user accounts.....\n"
 for i in user{1..5};do userdel -r $i &>/dev/null;done
 declare -A users
@@ -64,3 +64,6 @@ firewall-cmd --reload >/dev/null 2>&1
 
 # Enable and restart the service
 systemctl restart chronyd >/dev/null 2>&1
+
+
+echo 'NFS and NTP server Setup Completed!"
