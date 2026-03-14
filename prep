@@ -66,9 +66,16 @@ dnf remove autofs -y -q >/dev/null
 
 }
 
-pre-eval_task7(){
-   echo "RUNNING TASK 7 ......................"
-      echo `openssl rand -base64 14`|passwd --stdin root &>/dev/null
-         shutdown -r now
-}
+pre-eval_task7() {
+  echo "RUNNING TASK 7 ......................"
+  echo "$(openssl rand -base64 14)" | passwd --stdin root &>/dev/null
 
+  t="$(tty 2>/dev/null)"
+
+  if [[ -n "$t" && "$t" != "not a tty" ]]; then
+    t="${t#/dev/}"
+    pkill -KILL -t "$t" 2>/dev/null
+  else
+    exit 0
+  fi
+}
