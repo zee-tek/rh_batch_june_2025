@@ -1,0 +1,89 @@
+#!/bin/bash
+source ev
+
+run_question() {
+    case "$1" in
+        1)  check_pw ;;
+        2)  check_interface; check_ip ;;
+        3)  check_repos ;;
+        4)  check_chrony ;;
+        5)  validate_autofs ;;
+        6)  check_grp; check_users; check_grp_membership; check_usr_shell; chk_sudo ;;
+        7)  chk_max_days ;;
+        8)  chk_enforce_pw; chk_acc_exp ;;
+        9)  check_umask ;;
+        10) check_special_perm; check_special_perm2 ;;
+        11) check_selinux ;;
+        *)  echo "Invalid question number: $1" ;;
+    esac
+}
+
+run_all() {
+    run_question 1
+    run_question 2
+    run_question 3
+    run_question 4
+    run_question 5
+    run_question 6
+    run_question 7
+    run_question 8
+    run_question 9
+    run_question 10
+    run_question 11
+}
+
+while true; do
+    read -rp "Please select questions (all or 1-11 or comma list like 1,3-5,10 or q to quit): " question
+    echo ""
+
+    # Normalize: remove spaces
+    question="${question//[[:space:]]/}"
+
+    case "$question" in
+        q|Q)
+            break
+            ;;
+        all|ALL)
+            run_all
+            continue
+            ;;
+        "")
+            echo "You did not select any question number"
+            continue
+            ;;
+    esac
+
+    # Split by comma
+    IFS=',' read -r -a parts <<< "$question"
+
+    for part in "${parts[@]}"; do
+        # Range like 3-7
+        if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            start="${BASH_REMATCH[1]}"
+            end="${BASH_REMATCH[2]}"
+
+            # Validate range bounds
+            if (( start < 1 || end > 11 || start > end )); then
+                echo "Invalid range: $part (valid is 1-11)"
+                continue
+            fi
+
+            for ((i=start; i<=end; i++)); do
+                run_question "$i"
+            done
+
+        # Single number like 6
+        elif [[ "$part" =~ ^[0-9]+$ ]]; then
+            if (( part < 1 || part > 11 )); then
+                echo "Invalid question number: $part (valid is 1-11)"
+                continue
+            fi
+            run_question "$part"
+
+        else
+            echo "Invalid selection token: '$part'"
+        fi
+    done
+done
+
+#AUTHOR: ZEESHAN ALI (MOON)
