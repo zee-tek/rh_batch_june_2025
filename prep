@@ -23,7 +23,7 @@ pre-eval_task1(){
 pre-eval_task2(){
    echo "RUNNING TASK 2 ......................"
    dnf remove httpd -y -q &>/dev/null
-   dnf install httpd-core httpd -y -q &>/dev/null
+   dnf install httpd -y -q &>/dev/null
    sed -i 's/^List.*/Listen 83/' /etc/httpd/conf/httpd.conf &>/dev/null
    semanage port -d -t http_port_t -p tcp 83 &>/dev/null
    firewall-cmd --remove-port=83/tcp --permanent &>/dev/null
