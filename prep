@@ -22,18 +22,15 @@ pre-eval_task1(){
 
 pre-eval_task2(){
    echo "RUNNING TASK 2 ......................"
-   for i in user{1..5};do userdel -r $i &>/dev/null;done
-declare -A users
-users=( ["user1"]=4001 ["user2"]=4002 ["user3"]=4003 )
-mkdir /remo &>/dev/null
-
-for user in "${!users[@]}"; do
-    uid=${users[$user]}
-    sudo useradd -u $uid -M -b /remo $user &>/dev/null
-done
-dnf remove autofs -y -q >/dev/null
-
+   dnf remove httpd -y -q &>/dev/null
+   dnf install httpd-core httpd -y -q &>/dev/null
+   sed -i 's/^List.*/Listen 83/' /etc/httpd/conf/httpd.conf &>/dev/null
+   semanage port -d -t http_port_t -p tcp 83 &>/dev/null
+   firewall-cmd --remove-port=83/tcp --permanent &>/dev/null
+   firewall-cmd --reload &>/dev/null
+   echo "Practicing RHCSA9" > /var/www/html/index.html
 }
+
 
 pre-eval_task3(){
    echo "RUNNING TASK 3 ......................"
@@ -53,22 +50,25 @@ pre-eval_task5(){
       rm -rf  /tmp/admins &>/dev/null
 }
 
+
 pre-eval_task6(){
    echo "RUNNING TASK 6 ......................"
-   dnf remove httpd -y -q &>/dev/null
-   dnf install httpd-core httpd -y -q &>/dev/null
-   sed -i 's/^List.*/Listen 83/' /etc/httpd/conf/httpd.conf &>/dev/null
-   semanage port -d -t http_port_t -p tcp 83 &>/dev/null
-   firewall-cmd --remove-port=83/tcp --permanent &>/dev/null
-   firewall-cmd --reload &>/dev/null
-   echo "Practicing RHCSA9" > /var/www/html/index.html
-}
+   for i in user{1..5};do userdel -r $i &>/dev/null;done
+declare -A users
+users=( ["user1"]=4001 ["user2"]=4002 ["user3"]=4003 )
+mkdir /remo &>/dev/null
 
+for user in "${!users[@]}"; do
+    uid=${users[$user]}
+    sudo useradd -u $uid -M -b /remo $user &>/dev/null
+done
+dnf remove autofs -y -q >/dev/null
+
+}
 
 pre-eval_task7(){
    echo "RUNNING TASK 7 ......................"
       echo `openssl rand -base64 14`|passwd --stdin root &>/dev/null
-      exit
-         #shutdown -r now
+         shutdown -r now
 }
 
