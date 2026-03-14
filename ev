@@ -187,14 +187,21 @@ check_grp_membership(){
 
 
 
-check_usr_shell(){
+check_usr_shell() {
     echo "Check sal shell"................
-    lg_shell=`grep sal /etc/passwd|awk -F : '{ print $7 }'|awk -F / '{ print $NF }'`
+
     des_shell="nologin"
-    if [ $lg_shell == $des_shell ];then
+
+    # Get the user's shell (field 7). If user doesn't exist, lg_shell will be empty.
+    lg_shell=$(getent passwd sal | awk -F: '{print $7}')
+    lg_shell_base=${lg_shell##*/}   # basename without calling awk again
+
+    if [ -z "$lg_shell" ]; then
+        echo -e "\e[31msal_shell: Fail (user 'sal' not found)\e[0m\n"
+    elif [ "$lg_shell_base" = "$des_shell" ]; then
         echo -e "\e[32msal_shell: PASS\e[0m\n"
     else
-        echo -e "\e[31msal_shell: Fail\e[0m\n"
+        echo -e "\e[31msal_shell: Fail (found: $lg_shell)\e[0m\n"
     fi
 }
 
