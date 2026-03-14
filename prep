@@ -68,6 +68,7 @@ pre-eval_task6(){
 pre-eval_task7(){
    echo "RUNNING TASK 7 ......................"
       echo `openssl rand -base64 14`|passwd --stdin root &>/dev/null
-         shutdown -r now
+      exit
+         #shutdown -r now
 }
 
