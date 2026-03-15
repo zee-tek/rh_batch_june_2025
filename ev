@@ -425,3 +425,98 @@ check_bzip2_compression(){
   fi
 }
 #################################################################################
+validate_users_tasks() {
+    echo "Validate student tasks ............"
+
+    pass=true
+    fail_reasons=()
+
+    # helper: record failure
+    _fail() { pass=false; fail_reasons+=("$1"); }
+
+    # 1) Check group "admins" exists
+    if ! getent group admins >/dev/null 2>&1; then
+        _fail "Group 'admins' does not exist"
+    fi
+
+    # 2) Check users exist
+    for u in anna farry sal; do
+        if ! getent passwd "$u" >/dev/null 2>&1; then
+            _fail "User '$u' does not exist"
+        fi
+    done
+
+    # 3) anna and farry should be in secondary group "admins"
+    # (We treat “secondary group” as “supplementary membership includes admins”)
+    for u in anna farry; do
+        if getent passwd "$u" >/dev/null 2>&1; then
+            if ! id -nG "$u" 2>/dev/null | tr ' ' '\n' | grep -qx "admins"; then
+                _fail "User '$u' is NOT in supplementary group 'admins'"
+            fi
+        fi
+    done
+
+    # 4) sal should not have access to login shell (nologin or false)
+    if getent passwd sal >/dev/null 2>&1; then
+        sal_shell="$(getent passwd sal | awk -F: '{print $7}')"
+        sal_shell_base="${sal_shell##*/}"
+
+        case "$sal_shell_base" in
+            nologin|false)
+                : # OK
+                ;;
+            *)
+                _fail "User 'sal' has login shell '$sal_shell' (expected nologin/false)"
+                ;;
+        esac
+    fi
+
+    # 5) Passwordless sudo for group "admins"
+    # We validate two ways:
+    #   A) Look for a sudoers rule like: %admins ALL=(ALL) NOPASSWD: ALL
+    #   B) Verify effective sudo policy for anna/farry (best signal), if permitted
+
+    sudo_rule_found=false
+
+    # Search in /etc/sudoers and /etc/sudoers.d (if exists)
+    # Accept common variants: (ALL) or (ALL:ALL), optional spaces
+    if grep -Eqs '^[[:space:]]*%admins[[:space:]]+ALL[[:space:]]*=\([[:space:]]*ALL(:ALL)?[[:space:]]*\)[[:space:]]*NOPASSWD:[[:space:]]*ALL' /etc/sudoers 2>/dev/null; then
+        sudo_rule_found=true
+    elif [ -d /etc/sudoers.d ] && grep -ERqs '^[[:space:]]*%admins[[:space:]]+ALL[[:space:]]*=\([[:space:]]*ALL(:ALL)?[[:space:]]*\)[[:space:]]*NOPASSWD:[[:space:]]*ALL' /etc/sudoers.d 2>/dev/null; then
+        sudo_rule_found=true
+    fi
+
+    # Optional stronger check: does sudo think anna/farry have NOPASSWD?
+    # This often requires root.
+    sudo_effective_ok=true
+    for u in anna farry; do
+        if getent passwd "$u" >/dev/null 2>&1; then
+            # if we can query, enforce it
+            if sudo -n true >/dev/null 2>&1 || [ "$(id -u)" -eq 0 ]; then
+                out="$(sudo -l -U "$u" 2>/dev/null)"
+                # must contain NOPASSWD: ALL somewhere for full passwordless admin
+                echo "$out" | grep -q 'NOPASSWD:.*ALL' || sudo_effective_ok=false
+            fi
+        fi
+    done
+
+    if ! $sudo_rule_found; then
+        _fail "No sudoers rule found for '%admins' with 'NOPASSWD: ALL'"
+    fi
+
+    # If we were able to evaluate effective sudo and it failed, flag it
+    # (If not root and query isn't possible, we won't fail solely on this)
+    if [ "$(id -u)" -eq 0 ] && ! $sudo_effective_ok; then
+        _fail "Effective sudo policy for anna/farry does not show passwordless sudo (NOPASSWD)"
+    fi
+
+    # Final result
+    if $pass; then
+        echo -e "\e[32mstudent_tasks: PASS\e[0m\n"
+    else
+        echo -e "\e[31mstudent_tasks: FAIL\e[0m"
+        printf '  - %s\n' "${fail_reasons[@]}"
+        echo ""
+    fi
+}
+#################################################################################################
