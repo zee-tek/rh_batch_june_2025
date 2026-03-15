@@ -397,7 +397,7 @@ preserve_journal() {
 }
 #################################################################################
 check_tuned_profile() {
-  echo "Q15: Checking tuned profile..."
+  echo "Checking tuned profile..."
 
   recommended_profile=$(tuned-adm recommend 2>/dev/null | xargs)
   current_profile=$(tuned-adm active 2>/dev/null | grep -oP '(?<=profile: ).*' | xargs)
