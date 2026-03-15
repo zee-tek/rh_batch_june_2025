@@ -380,3 +380,48 @@ check_selinux(){
    fi
 }
 ################################################################################
+
+preserve_journal() {
+    echo "Check preserve journal ............"
+
+    journalctl -b -1 >/dev/null 2>&1
+    j_st=$?
+
+    if [ "$j_st" -eq 0 ] \
+       && [ -d /var/log/journal ] \
+       && [ "$(ls -A /var/log/journal 2>/dev/null)" ]; then
+        echo -e "\e[32mpreserve_journal: Pass\e[0m\n"
+    else
+        echo -e "\e[31mpreserve_journal: Fail\e[0m\n"
+    fi
+}
+#################################################################################
+check_tuned_profile() {
+  echo "Q15: Checking tuned profile..."
+
+  recommended_profile=$(tuned-adm recommend 2>/dev/null | xargs)
+  current_profile=$(tuned-adm active 2>/dev/null | grep -oP '(?<=profile: ).*' | xargs)
+
+  # If tuned is installed but no profile is active
+  [ -z "$current_profile" ] && current_profile="none"
+
+  if [ "$current_profile" = "$recommended_profile" ]; then
+    echo -e "\e[32mtuned_profile: PASS\e[0m"
+  else
+    echo -e "\e[31mtuned_profile: FAIL\e[0m"
+  fi
+
+  echo
+}
+##################################################################################
+check_bzip2_compression(){
+  echo "Checking bzip2 compression..."
+  file_n="/tmp/archive.tar"
+
+  if file "$file_n" | grep -q "bzip2 compressed data"; then
+    echo -e "\e[32mbzip2_compression: PASS\e[0m\n"
+  else
+    echo -e "\e[31mbzip2_compression: FAIL\e[0m\n"
+  fi
+}
+#################################################################################
